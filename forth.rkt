@@ -3,6 +3,8 @@
 ;; TODO: Add comments
 ;; TODO: Add strings
 ;; TODO: Stdlib coverage
+;; TODO: Error checking!
+;; TODO: Imperative shit (do loop, variables, arrays)!
 
 ;; starts-with? : string -> char -> bool
 (define (starts-with? str char)
@@ -168,7 +170,15 @@
 
 (new-func "."
 	  (lambda ()
-	    (displayln (pop))))
+	    (display (pop))))
+
+(new-func "emit"
+	  (lambda ()
+	    (display (integer->char (pop)))))
+
+(new-func "cr"
+	  (lambda ()
+	    (displayln "")))
 
 (new-func "dup"
 	  (lambda ()
@@ -184,6 +194,23 @@
 		  [second (pop)])
 	      (push first)
 	      (push second))))
+
+(new-func "over"
+	  (lambda ()
+	    (let ([first (pop)]
+		  [second (pop)])
+	      (push second)
+	      (push first)
+              (push second))))
+
+(new-func "rot"
+	  (lambda ()
+	    (let ([first (pop)]
+		  [second (pop)]
+                  [third (pop)])
+	      (push second)
+	      (push first)
+              (push third))))
 
 (new-func "empty?"
 	  (lambda ()
