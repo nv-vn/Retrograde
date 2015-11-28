@@ -229,7 +229,7 @@
 (eval-terms (list ":" "sep?" "sep" "=" ";"))
 (eval-terms (list ":" "print" "dup" "." ";"))
 (eval-terms (list ":" "print*" "dup" "sep?" "if" "." "print*" "else" "drop" "then" ";"))
-(eval-terms (list ":" "drop*" "sep?" "if" "drop" "else" "drop" "drop*" "then" ";"))
+(eval-terms (list ":" "drop*" "dup" "sep?" "if" "drop" "drop*" "else" "drop" "then" ";"))
 
 ;; Main function
 (define (loop)
