@@ -13,7 +13,9 @@ Some examples below:
 (| 1 2 3 4 5 6 7 8 9)
 [$] drop*
 ()
-[$] : sum dup dup sep? swap empty? or not if + swap sum then ;
+[$]: sum one? if sumh else then ;
+()
+[$] : sumh empty? swap sep? rot or not if + sum then ;
 ()
 [$] 1 2 3 4 5 sum
 (15)
