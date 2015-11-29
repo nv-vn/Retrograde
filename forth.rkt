@@ -3,8 +3,31 @@
 ;; TODO: Add comments
 ;; TODO: Add strings
 ;; TODO: Stdlib coverage
-;; TODO: Error checking!
 ;; TODO: Imperative shit (do loop, variables, arrays)!
+
+;; err : string -> err
+(define (err msg)
+  (list 'err msg))
+
+;; err? : ? -> bool
+(define (err? e)
+  (if (pair? e)
+      (if (equal? (car e) 'err)
+          #t
+          #f)
+      #f))
+
+;; handle : err -> type -> val_of(type) | ?a -> type -> ?a
+(define (handle e type)
+  (if (err? e)
+      (both
+       (displayln (cadr e)) ; Display the error message
+       (cond
+        [(equal? type 'number) 0]
+        [(equal? type 'proc) (lambda (x) x)]
+        [(equal? type 'list) '()]
+        [(equal? type 'string) ""]))
+      e)) ; Return the value given, since it's okay
 
 ;; starts-with? : string -> char -> bool
 (define (starts-with? str char)
@@ -27,56 +50,56 @@
       (list->string acc)
       (let ([next-char (read-char)])
         (if (char=? next-char #\space)
-	    (list->string acc)
-	    (read-term (append acc (list next-char)))))))
+            (list->string acc)
+            (read-term (append acc (list next-char)))))))
 
 ;; parse-term : term => ?
 (define (parse-term term)
   (let ([maybe-num (string->number term)])
     (if maybe-num
-	(push maybe-num)
-	(if (starts-with? term #\')
-	    (push (substring term 1))
-	    (apply-func term)))))
+        (push maybe-num)
+        (if (starts-with? term #\')
+            (push (substring term 1))
+            (apply-func term)))))
 
 ;; contains? : ? list -> ? -> bool
 (define (contains? items item)
   (if (null? items)
       #f
       (if (equal? (car items) item)
-	  #t
-	  (contains? (cdr items) item))))
+          #t
+          (contains? (cdr items) item))))
 
 ;; split : ? list -> ? list -> ? -> ? list * ? list
 (define (split acc items target)
   (if (null? items)
       (list acc items)
       (if (equal? target (car items))
-	  (list acc (cdr items))
-	  (split (append acc (list (car items))) (cdr items) target))))
+          (list acc (cdr items))
+          (split (append acc (list (car items))) (cdr items) target))))
 
 ;; parse-def : {def a b} term -> void
 (define (parse-def terms)
   (let* ([name (car terms)]
-	 [rest (split '() (cdr terms) ";")]
-	 [fn (lambda ()
-	       (eval-terms (car rest)))])
+         [rest (split '() (cdr terms) ";")]
+         [fn (lambda ()
+               (eval-terms (car rest)))])
     (eval-terms (cadr rest))
     (new-func name fn)))
 
 ;; parse-if : {if a (?b)} term -> a | (b | void)
 (define (parse-if terms)
   (let* ([clauses (split '() terms "then")]
-	 [subclauses (split '() (car clauses) "else")])
+         [subclauses (split '() (car clauses) "else")])
     (if (contains? (car clauses) "else")
-	(if (zero? (peek))
-	    (both (pop) (eval-terms (car subclauses)))
-	    (if (equal? (pop) -1)
-		(eval-terms (cadr subclauses))
-		#f))
-	(if (equal? (pop) -1)
-	    (eval-terms (car clauses))
-	    #f))))
+        (if (zero? (peek))
+            (both (pop) (eval-terms (car subclauses)))
+            (if (equal? (pop) -1)
+                (eval-terms (cadr subclauses))
+                #f))
+        (if (equal? (pop) -1)
+            (eval-terms (car clauses))
+            #f))))
 
 ;; string * (? -> ?) list
 (define funcs '())
@@ -87,11 +110,13 @@
 
 ;; string * (? -> ?) list => ?
 (define (apply-func name)
-  (apply (cadr (car (filter
-	       (lambda (func)
-		 (string=? name (car func)))
-	       funcs)))
-	 '()))
+  (let ([fns (filter
+              (lambda (func)
+                (string=? name (car func)))
+              funcs)])
+    (if (null? fns)
+        (err (string-append name " ?"))
+        (apply (cadr (car fns)) '()))))
 
 ;; ? stack
 (define stack '())
@@ -102,13 +127,17 @@
 
 ;; ? stack -> ?
 (define (peek)
-  (car stack))
+  (if (null? stack)
+      (err "Underflow error!")
+      (car stack)))
 
 ;; ? stack => ?
 (define (pop)
-  (let ([item (car stack)])
-    (set! stack (cdr stack))
-    item))
+  (if (null? stack)
+      (err "Underflow error!")
+      (let ([item (car stack)])
+        (set! stack (cdr stack))
+        item)))
 
 ;; both : ?a -> ?b -> ?b
 (define (both a b)
@@ -119,104 +148,115 @@
   (if (null? terms)
       '()
       (if (string=? (car terms) ":")
-	  (parse-def (cdr terms))
-	  (if (string=? (car terms) "if")
-	      (parse-if (cdr terms))
-	      (both
-	       (parse-term (car terms))
-	       (eval-terms (cdr terms)))))))
+          (parse-def (cdr terms))
+          (if (string=? (car terms) "if")
+              (parse-if (cdr terms))
+              (both
+               (parse-term (car terms))
+               (eval-terms (cdr terms)))))))
 
 ;; print-stack : stack => string out
 (define (print-stack)
   (displayln (reverse stack)))
 
 (new-func "+"
-	  (lambda ()
-	    (push (+ (pop) (pop)))))
+          (lambda ()
+            (push (+ (handle (pop) 'number) (handle (pop) 'number)))))
 
 (new-func "-"
-	  (lambda ()
-	    (let ([first (pop)])
-	      (push (- (pop) first)))))
+          (lambda ()
+            (let ([first (pop)])
+              (push (- (handle (pop) 'number) (handle first 'number))))))
 
 (new-func "*"
-	  (lambda ()
-	    (push (* (pop) (pop)))))
+          (lambda ()
+            (push (* (handle (pop) 'number) (handle (pop) 'number)))))
 
 (new-func "/"
-	  (lambda ()
-	    (let ([first (pop)])
-	      (push (/ (pop) first)))))
+          (lambda ()
+            (let ([first (pop)])
+              (push (/ (handle (pop) 'number) (handle first 'number))))))
 
 (new-func "="
-	  (lambda ()
-	    (if (equal? (pop) (pop))
-		(push -1)
-		(push 0))))
+          (lambda ()
+            (if (equal? (pop) (pop))
+                (push -1)
+                (push 0))))
 
 (new-func "<"
-	  (lambda ()
-	    (let ([first (pop)])
-	      (if (< (pop) first)
-		  (push -1)
-		  (push 0)))))
+          (lambda ()
+            (let ([first (pop)])
+              (if (< (pop) first)
+                  (push -1)
+                  (push 0)))))
 
 (new-func ">"
-	  (lambda ()
-	    (let ([first (pop)])
-	      (if (> (pop) first)
-		  (push -1)
-		  (push 0)))))
+          (lambda ()
+            (let ([first (pop)])
+              (if (> (handle (pop) 'number) (handle first 'number))
+                  (push -1)
+                  (push 0)))))
 
 (new-func "."
-	  (lambda ()
-	    (display (pop))))
+          (lambda ()
+            (display (handle (pop) 'string)))) ; "" will display as empty
 
 (new-func "emit"
-	  (lambda ()
-	    (display (integer->char (pop)))))
+          (lambda ()
+            (display (integer->char (handle (pop) 'number)))))
 
 (new-func "cr"
-	  (lambda ()
-	    (displayln "")))
+          (lambda ()
+            (displayln "")))
 
 (new-func "dup"
-	  (lambda ()
-	    (push (peek))))
+          (lambda ()
+            (push (handle (peek) 'number))))
 
 (new-func "drop"
-	  (lambda ()
-	    (pop)))
+          (lambda ()
+            (pop)))
 
 (new-func "swap"
-	  (lambda ()
-	    (let ([first (pop)]
-		  [second (pop)])
-	      (push first)
-	      (push second))))
+          (lambda ()
+            (let ([first (pop)]
+                  [second (pop)])
+              (if (or (err? first) (err? second))
+                  (handle (err "Underflow error!"))
+                  (both
+                   (push first)
+                   (push second))))))
 
 (new-func "over"
-	  (lambda ()
-	    (let ([first (pop)]
-		  [second (pop)])
-	      (push second)
-	      (push first)
-              (push second))))
+          (lambda ()
+            (let ([first (pop)]
+                  [second (pop)])
+              (if (or (err? first) (err? second))
+                  (handle (err "Underflow error!"))
+                  (both
+                   (push second)
+                   (both
+                    (push first)
+                    (push second)))))))
 
 (new-func "rot"
-	  (lambda ()
-	    (let ([first (pop)]
-		  [second (pop)]
+          (lambda ()
+            (let ([first (pop)]
+                  [second (pop)]
                   [third (pop)])
-	      (push second)
-	      (push first)
-              (push third))))
+              (if (or (err? first) (err? second) (err? third))
+                  (handle (err "Underflow error!"))
+                  (both
+                   (push second)
+                   (both
+                    (push first)
+                    (push third)))))))
 
 (new-func "empty?"
-	  (lambda ()
-	    (if (null? stack)
-		(push -1)
-		(push 0))))
+          (lambda ()
+            (if (null? stack)
+                (push -1)
+                (push 0))))
 
 ;; Definitions that are possible within Forth:
 (eval-terms (list ":" "not" "if" "-1" "else" "0" "then" ";"))
