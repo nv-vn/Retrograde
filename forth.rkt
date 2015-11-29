@@ -221,42 +221,52 @@
           (lambda ()
             (let ([first (pop)]
                   [second (pop)])
-              (if (or (err? first) (err? second))
-                  (handle (err "Underflow error!"))
-                  (both
-                   (push first)
-                   (push second))))))
+              (cond
+               [(and (err? first) (err? second)) (handle (err "Underflow error!") 'string)]
+               [(err? second) (push first) (handle (err "Underflow error!") 'string)]
+               [else
+                (push first)
+                (push second)]))))
 
 (new-func "over"
           (lambda ()
             (let ([first (pop)]
                   [second (pop)])
-              (if (or (err? first) (err? second))
-                  (handle (err "Underflow error!"))
-                  (both
-                   (push second)
-                   (both
-                    (push first)
-                    (push second)))))))
+              (cond
+               [(and (err? first) (err? second)) (handle (err "Underflow error!") 'string)]
+               [(err? second) (push first) (handle (err "Underflow error!") 'string)]
+               [else
+                (push second)
+                (push first)
+                (push second)]))))
 
 (new-func "rot"
           (lambda ()
             (let ([first (pop)]
                   [second (pop)]
                   [third (pop)])
-              (if (or (err? first) (err? second) (err? third))
-                  (handle (err "Underflow error!"))
-                  (both
-                   (push second)
-                   (both
-                    (push first)
-                    (push third)))))))
+              (cond
+               [(and (err? first) (err? second) (err? third)) (handle (err "Underflow error!") 'string)]
+               [(and (err? second) (err? third)) (push first) (handle (err "Underflow error!") 'string)] ; We are `rot`ing here still... is this a good idea?
+               [(err? third) (push first) (push second) (handle (err "Underflow error!") 'string)]
+               [else
+                (push second)
+                (push first)
+                (push third)]))))
 
 (new-func "empty?"
           (lambda ()
             (if (null? stack)
                 (push -1)
                 (push 0))))
+
+(new-func "one?"
+          (lambda ()
+            (if (null? stack)
+                (push 0)
+                (if (null? (cdr stack))
+                    (push -1)
+                    (push 0)))))
 
 ;; Definitions that are possible within Forth:
 (eval-terms (list ":" "not" "if" "-1" "else" "0" "then" ";"))
@@ -266,10 +276,12 @@
 ;; TODO: >=, <=, etc. functions
 (eval-terms (list ":" "<>" "xor" ";"))
 (eval-terms (list ":" "sep" "'|" ";"))
-(eval-terms (list ":" "sep?" "sep" "=" ";"))
+(eval-terms (list ":" "sep?" "dup" "sep" "=" ";"))
 (eval-terms (list ":" "print" "dup" "." ";"))
-(eval-terms (list ":" "print*" "dup" "sep?" "if" "." "print*" "else" "drop" "then" ";"))
-(eval-terms (list ":" "drop*" "dup" "sep?" "if" "drop" "drop*" "else" "drop" "then" ";"))
+(eval-terms (list ":" "print*" "dup" "sep?" "swap" "drop" "if" "." "print*" "else" "drop" "then" ";"))
+(eval-terms (list ":" "drop*" "dup" "sep?" "swap" "drop" "if" "drop" "drop*" "else" "drop" "then" ";"))
+(eval-terms (list ":" "sum" "one?" "if" "sumh" "else" "then" ";"))
+(eval-terms (list ":" "sumh" "empty?" "swap" "sep?" "rot" "or" "not" "if" "+" "sum" "then" ";"))
 
 ;; Main function
 (define (loop)
