@@ -62,6 +62,16 @@
             (push (substring term 1))
             (apply-func term)))))
 
+;; parse-comment : {comment} term -> term list
+(define (parse-comment terms)
+  (if (null? terms)
+      (handle (err "Parse error - Incomplete comment!") 'string)
+      (if (string=? (car terms) "(")
+          (parse-comment (parse-comment (cdr terms)))
+          (if (string=? (car terms) ")")
+              (cdr terms)
+              (parse-comment (cdr terms))))))
+
 ;; contains? : ? list -> ? -> bool
 (define (contains? items item)
   (if (null? items)
@@ -115,7 +125,7 @@
                 (string=? name (car func)))
               funcs)])
     (if (null? fns)
-        (err (string-append name " ?"))
+        (handle (err (string-append name " ?")) 'string)
         (apply (cadr (car fns)) '()))))
 
 ;; ? stack
@@ -151,9 +161,11 @@
           (parse-def (cdr terms))
           (if (string=? (car terms) "if")
               (parse-if (cdr terms))
-              (both
-               (parse-term (car terms))
-               (eval-terms (cdr terms)))))))
+              (if (string=? (car terms) "(")
+                  (eval-terms (parse-comment (cdr terms)))
+                  (both
+                   (parse-term (car terms))
+                   (eval-terms (cdr terms))))))))
 
 ;; print-stack : stack => string out
 (define (print-stack)
